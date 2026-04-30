@@ -1,122 +1,191 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const TempCareApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class TempCareApp extends StatelessWidget {
+  const TempCareApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        fontFamily: 'Roboto',
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const TempCareScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class TempCareScreen extends StatefulWidget {
+  const TempCareScreen({super.key});
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<TempCareScreen> createState() => _TempCareScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  // Controladores para los nuevos inputs numéricos
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _baselineController = TextEditingController(text: '36.6');
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  // Datos de sensores y lógica
+  double measuredTemp = 0.0; 
+  bool _isBluetoothConnected = false;
+  String activity = 'Reposo';
+  double deltaT = 0.0;
+  String recommendation = "Esperando análisis...";
+  Color resultColor = const Color(0xFF1A6B8A);
+
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      backgroundColor: const Color(0xFFE8F4F8),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("TempCare", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A6B8A))),
+                      Text("Configuración y Análisis", style: TextStyle(color: Color(0xFF5A9BB5))),
+                    ],
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      _isBluetoothConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching,
+                      color: _isBluetoothConnected ? const Color(0xFF00BFA5) : const Color(0xFF1A6B8A),
+                      size: 32,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // BOX SUPERIOR: INPUTS DE USUARIO (Edad y Basal)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF1A6B8A), Color(0xFF2A8BAA)]),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("DATOS DEL USUARIO", style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDarkInput(controller: _ageController, label: "Edad", hint: "Ej. 25"),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: _buildDarkInput(controller: _baselineController, label: "Basal (°C)", hint: "36.6"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // BOX ACTIVIDAD
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: activity,
+                      items: ['Reposo', 'Actividad Ligera', 'Actividad Moderada', 'Actividad Intensa'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
+                      onChanged: (val) => setState(() => activity = val!),
+                      decoration: const InputDecoration(labelText: 'Nivel de Actividad', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00BFA5), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        onPressed: analyze,
+                        child: const Text("ANALIZAR AHORA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // SECCIÓN: TEMPERATURA EN TIEMPO REAL
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFB8D8E8))),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Lectura Bluetooth:", style: TextStyle(color: Color(0xFF1A6B8A), fontWeight: FontWeight.w500)),
+                    Text(
+                      _isBluetoothConnected ? "${measuredTemp.toStringAsFixed(1)} °C" : "Desconectado",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _isBluetoothConnected ? Colors.black87 : Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // BOX DE RESULTADOS (DELTA T)
+              if (deltaT != 0.0)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: resultColor, borderRadius: BorderRadius.circular(24)),
+                  child: Column(
+                    children: [
+                      Text("ΔT: ${deltaT.toStringAsFixed(2)}°C", style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 5),
+                      Text(recommendation, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+    );
+  }
+
+  // Widget auxiliar para los inputs claros sobre fondo oscuro
+  Widget _buildDarkInput({required TextEditingController controller, required String label, required String hint}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        const SizedBox(height: 5),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.1),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+        ),
+      ],
     );
   }
 }
