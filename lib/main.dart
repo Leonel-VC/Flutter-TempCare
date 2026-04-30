@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'bluetooth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +30,10 @@ class TempCareScreen extends StatefulWidget {
   State<TempCareScreen> createState() => _TempCareScreenState();
 }
 
+class _TempCareScreenState extends State<TempCareScreen> {
+  final MyBluetoothService _bluetoothManager = MyBluetoothService();
+  StreamSubscription<String>? _dataSubscription;
+
   // Controladores para los nuevos inputs numéricos
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _baselineController = TextEditingController(text: '36.6');
@@ -39,6 +46,73 @@ class TempCareScreen extends StatefulWidget {
   String recommendation = "Esperando análisis...";
   Color resultColor = const Color(0xFF1A6B8A);
 
+  @override
+  void initState() {
+    super.initState();
+    // Escuchar datos del ESP32
+    _dataSubscription = _bluetoothManager.dataStream.listen((data) {
+      if (mounted) {
+        setState(() {
+          measuredTemp = double.tryParse(data.trim()) ?? measuredTemp;
+          measuredTemp = measuredTemp * 20 / 255 + 22; // Convertir de 8 bits a °C acorde al código del ESP32
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _dataSubscription?.cancel();
+    _ageController.dispose();
+    _baselineController.dispose();
+    super.dispose();
+  }
+
+  void analyze() {
+    double? baseline = double.tryParse(_baselineController.text);
+    double correction = activity.contains('Ligera') ? 0.3 : activity.contains('Moderada') ? 0.5 : activity.contains('Intensa') ? 0.7 : 0.0; // Correción por actividad
+    
+    if (baseline == null || measuredTemp == 0.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Asegúrate de conectar el Bluetooth e ingresar el Basal'))
+      );
+      return;
+    }
+
+    setState(() {
+      // CALCULO DE DELTA T: (T. Medida - Corrección Actividad) - Baseline
+      deltaT = (measuredTemp - correction) - baseline;
+      
+      // Lógica de severidad básica
+      if (deltaT < -0.5) {
+        recommendation = "Posible Hipotermia. Buscar calor.";
+        resultColor = Colors.blue.shade700;
+      } else if (deltaT <= 0.5) {
+        recommendation = "Temperatura normal respecto a tu basal.";
+        resultColor = const Color(0xFF00BFA5);
+      } else {
+        recommendation = "Fiebre detectada. Aplicar protocolos de reducción.";
+        resultColor = Colors.redAccent;
+      }
+    });
+  }
+
+  // --- MÉTODOS DE BLUETOOTH ---
+  Future<void> _requestPermissions() async {
+    await [Permission.bluetoothScan, Permission.bluetoothConnect, Permission.location].request();
+  }
+
+  void _showBluetoothModal() async {
+    await _requestPermissions();
+    if (!await _bluetoothManager.checkBluetooth()) return;
+    await _bluetoothManager.enableBluetooth();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => const BluetoothDeviceList(),
+    ).then((_) => setState(() => _isBluetoothConnected = _bluetoothManager.isConnected));
+  }
 
   @override
   Widget build(BuildContext context) {
