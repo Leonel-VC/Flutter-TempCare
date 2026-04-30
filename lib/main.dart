@@ -54,7 +54,7 @@ class _TempCareScreenState extends State<TempCareScreen> {
       if (mounted) {
         setState(() {
           measuredTemp = double.tryParse(data.trim()) ?? measuredTemp;
-          measuredTemp = measuredTemp * 20 / 255 + 22; // Convertir de 8 bits a °C acorde al código del ESP32
+          measuredTemp = measuredTemp * 20 / 255 + 20; // Convertir de 8 bits a °C acorde al código del ESP32
         });
       }
     });
@@ -140,6 +140,10 @@ class _TempCareScreenState extends State<TempCareScreen> {
                       color: _isBluetoothConnected ? const Color(0xFF00BFA5) : const Color(0xFF1A6B8A),
                       size: 32,
                     ),
+                    onPressed: _isBluetoothConnected ? () {
+                      _bluetoothManager.disconnect();
+                      setState(() => _isBluetoothConnected = false);
+                    } : _showBluetoothModal,
                   ),
                 ],
               ),
@@ -260,6 +264,65 @@ class _TempCareScreenState extends State<TempCareScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// LISTA DE DISPOSITIVOS
+class BluetoothDeviceList extends StatefulWidget {
+  const BluetoothDeviceList({super.key});
+  @override
+  State<BluetoothDeviceList> createState() => _BluetoothDeviceListState();
+}
+
+class _BluetoothDeviceListState extends State<BluetoothDeviceList> {
+  final MyBluetoothService _bluetoothManager = MyBluetoothService();
+  List<BluetoothDevice> _devices = [];
+  bool _isScanning = true;
+
+  @override
+  void initState() { super.initState(); _scan(); } // Buscar dispositivos
+
+  void _scan() async {
+    setState(() => _isScanning = true);
+    var devices = await _bluetoothManager.scanDevices();
+    if (mounted) setState(() { _devices = devices; _isScanning = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) { // Selección de sensor
+    return Container(
+      padding: const EdgeInsets.all(20),
+      height: 400,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Seleccionar Sensor", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              if (_isScanning) const CircularProgressIndicator() else IconButton(icon: const Icon(Icons.refresh), onPressed: _scan),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _devices.length,
+              itemBuilder: (context, index) {
+                final device = _devices[index];
+                if (device.platformName.isEmpty) return const SizedBox.shrink();
+                return ListTile(
+                  leading: const Icon(Icons.bluetooth),
+                  title: Text(device.platformName),
+                  onTap: () async {
+                    await _bluetoothManager.connectToDevice(device);
+                    if (mounted) Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
