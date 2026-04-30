@@ -65,3 +65,5 @@ La aplicación no solo muestra la temperatura bruta, sino que realiza un anális
 5. Toca el ícono de Bluetooth en la esquina superior derecha para escanear y conectar el hardware ("RGB LED Controller" / Sensor de temperatura).
 6. Observa tu temperatura real decodificada en pantalla.
 7. Presiona **ANALIZAR AHORA** para obtener el cálculo de tu Delta T y tu estado de salud actual.
+
+https://github.com/user-attachments/assets/6f42aac2-c3d2-40cd-a3c4-c190933a7298
