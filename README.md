@@ -3,13 +3,13 @@ Es una app móvil de salud orientada al monitoreo y análisis inteligente de la 
 
 ---
 
-## 📖 Descripción del proyecto
+## Descripción del proyecto
 
 El objetivo de TempCare es ofrecer una lectura de temperatura que vaya más allá del simple número. Muchas veces, factores como la actividad física previa o la temperatura corporal "normal" (basal) de una persona alteran la interpretación de una lectura de termómetro. Esta app toma las lecturas de un dispositivo externo, las ajusta según el contexto del paciente y devuelve una evaluación mediante una interfaz intuitiva.
 
 ---
 
-## ⚙️ Arquitectura y funcionamiento
+## Arquitectura y funcionamiento
 
 El sistema se compone de dos partes principales: el hardware de adquisición de datos y la app móvil.
 
@@ -32,7 +32,7 @@ El sistema se compone de dos partes principales: el hardware de adquisición de 
 
 ---
 
-## 🧠 Lógica de cálculo médico (Delta T)
+## Lógica de cálculo médico (Delta T)
 
 La aplicación no solo muestra la temperatura bruta, sino que realiza un análisis para evitar falsos positivos (por ejemplo, tener una temperatura ligeramente elevada solo por haber hecho ejercicio).
 
@@ -49,14 +49,14 @@ La aplicación no solo muestra la temperatura bruta, sino que realiza un anális
 
 ---
 
-## 🚀 Tecnologías utilizadas
+## Tecnologías utilizadas
 
 * **Frontend Móvil:** Flutter SDK (Dart)
   * Paquetes clave: `flutter_blue_plus` (para BLE), `permission_handler` (para gestión de permisos de hardware).
 * **Firmware:** Arduino IDE / C++ (Para ESP32)
   * Librerías: `BLEDevice`, `Adafruit_MLX90614`, `Wire`.
 
-## 📱 Uso de la app
+## Uso de la app
 
 1. Enciende el dispositivo ESP32.
 2. Abre la app **TempCare**.
